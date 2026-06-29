@@ -20,7 +20,7 @@ namespace SP2FuselageSplitter
     {
         public const string PluginGuid = "codex.sp2.fuselagesplitter";
         public const string PluginName = "SP2 Fuselage Splitter";
-        public const string PluginVersion = "0.3.4";
+        public const string PluginVersion = "0.3.5";
 
         private const string DesignerTypeName = "Assets.Scripts.Design.Designer";
 
@@ -623,6 +623,7 @@ namespace SP2FuselageSplitter
                 if (_deleteOriginal.Value)
                 {
                     RemapConnectionsFromSource(craftXml, sourceId, sourceXml, splitXml);
+                    RemapPartReferencesFromSource(craftXml, sourceId, splitXml);
                     liveSource.ReplaceWith(splitXml);
                 }
                 else
@@ -734,6 +735,57 @@ namespace SP2FuselageSplitter
                         sourceXml,
                         splitXml));
                 }
+            }
+        }
+
+        // When the source part is deleted, other parts (notably TextureDecal/TextDecal parts via
+        // PartTargeting.State customPartIds) may still reference its id. A dangling id makes
+        // DecalData.OnAssemblyLoaded null-deref and the whole craft fails to load. Rewrite every
+        // such reference to the full set of split-piece ids so the projection still resolves.
+        private static void RemapPartReferencesFromSource(XElement craftXml, int sourceId, List<XElement> splitXml)
+        {
+            string source = sourceId.ToString(CultureInfo.InvariantCulture);
+            string[] replacements = splitXml
+                .Select(piece => piece.Attribute("id")?.Value)
+                .Where(id => !string.IsNullOrEmpty(id))
+                .ToArray();
+            if (replacements.Length == 0)
+            {
+                return;
+            }
+
+            foreach (XAttribute attr in craftXml.Descendants().Attributes("customPartIds").ToList())
+            {
+                string[] tokens = (attr.Value ?? "")
+                    .Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(t => t.Trim())
+                    .Where(t => t.Length > 0)
+                    .ToArray();
+                if (!tokens.Any(t => string.Equals(t, source, StringComparison.Ordinal)))
+                {
+                    continue;
+                }
+
+                List<string> rebuilt = new List<string>();
+                foreach (string token in tokens)
+                {
+                    if (string.Equals(token, source, StringComparison.Ordinal))
+                    {
+                        foreach (string rep in replacements)
+                        {
+                            if (!rebuilt.Contains(rep))
+                            {
+                                rebuilt.Add(rep);
+                            }
+                        }
+                    }
+                    else if (!rebuilt.Contains(token))
+                    {
+                        rebuilt.Add(token);
+                    }
+                }
+
+                attr.Value = string.Join(",", rebuilt.ToArray());
             }
         }
 

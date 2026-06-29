@@ -11,6 +11,7 @@ The tool integrates directly into the game's **Part Properties** panel. When a s
 - Optionally replace the original part or retain it alongside the generated pieces.
 - Reconnect the generated pieces into a continuous chain.
 - Remap the original part's external connections when replacing it.
+- Preserve decal targeting when replacing a fuselage referenced by custom part IDs.
 - Create a designer undo step before modifying the craft.
 - Support modern `JFuselage.State` and legacy `Fuselage.State` parts.
 - Use a native-styled interface inside the existing Part Properties widget.
@@ -32,7 +33,7 @@ The splitter reads the selected part's runtime XML, creates a copy for each requ
 
 For modern fuselages, numeric attributes from `SectionA` and `SectionB` are interpolated at each segment boundary. For legacy fuselages, the front and rear scales and related numeric attributes are interpolated instead. Each generated part receives a new ID and the same rotation as the source, while its position is shifted to the correct segment center.
 
-When **Delete original** is enabled, connections using the front or rear attach points are moved to the first or last generated piece. Other connections are assigned to the nearest segment using the connected part's position. The generated pieces are then connected end-to-end.
+When **Delete original** is enabled, connections using the front or rear attach points are moved to the first or last generated piece. Other connections are assigned to the nearest segment using the connected part's position. Decal custom-part targets referencing the original fuselage are expanded to the generated piece IDs so the craft remains loadable and the projection still resolves. The generated pieces are then connected end-to-end.
 
 Some discrete or sparsely serialized properties cannot be smoothly interpolated. These include certain cutting values, corner modes, boolean surface options, and modifier-specific data. Such properties may be copied or switched between the source end states.
 
